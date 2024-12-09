@@ -3,7 +3,17 @@ uuid = "1064e537-9ee1-43d8-887b-42e480a72de7"
 authors = ["Jaan Erik Pihel"]
 version = "1.0.0-DEV"
 
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
 [compat]
+BenchmarkTools = "1.5.0"
+Distributions = "0.25.113"
+Random = "1.11.0"
+TOML = "1.0.3"
 julia = "1.6.7"
 
 [extras]
