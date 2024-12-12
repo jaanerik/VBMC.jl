@@ -2,6 +2,12 @@
     Homogeneous Hidden Pairwise Markov Model
 """
 
+struct HPMM
+    U<:Array{<:Int}
+    X<:Array{<:Int}
+    Y<:Array{<:Real}
+end
+
 struct ReshapedCategorical <: Sampleable{Multivariate , Discrete } 
     d::Categorical
     U::Int
@@ -24,13 +30,13 @@ struct EmissionDistribution <: Sampleable{Univariate, Discrete }
     X::Int
 end
 
-struct HPMM <: Sampleable{Univariate , Continuous }
+struct HpmmDistribution <: Sampleable{Univariate , Continuous }
     P_first::ReshapedCategorical
     P_tr::TransitionDistribution
     P_em::EmissionDistribution
 end
 
-# Constructors
+# Distribution construction
 
 function createFirstDistribution(U::Int, X::Int)
     """
@@ -75,6 +81,33 @@ end
 function Base.rand(ed::EmissionDistribution, u::Int, x::Int)
     noise = rand(ed.emission)
     x + noise
+end
+
+function Base.rand(
+    P1::ReshapedCategorical,
+    P_tr::TransitionDistribution,
+    T::Int)
+    pmm = Array{Tuple{Int,Int},2}(undef, 10, 1)
+    pmm[1] = rand(P1)
+    for t in 2:T
+        uprev, xprev = pmm[t-1][1], pmm[t-1][2]
+        pmm[t] = rand(P_tr, uprev, xprev)
+    end
+    pmm
+end
+
+function Base.rand(hpmm::HpmmDistribution, T::Int)
+    """
+    Returns Matrix of size T of a Triplet Markov Chain,
+    where first element in (U,X) tuple and Y is observed variable.
+    [
+        (U,X)   Y
+        ....
+    ]
+    """
+    pmm = rand(hpmm.P_first, hpmm.P_tr, T)
+    ems = pmm .|> (p -> rand(Pe, p[1], p[2]))
+    hcat(pmm, ems)
 end
 
 # Helpers

@@ -16,7 +16,7 @@ using StatsBase
 
     P1 = createFirstDistribution(U, X)
     Pt = createTransitionDistribution(U, X)
-    Pe = createEmissionDistribution(U,X)
+    Pe = createEmissionDistribution(U, X)
     @testset "HPMM helpers" begin
         @test size(rand(P1), 1) == 2
         @test size(Pt.mat) == (U,X,U,X) #let (:,:,j,k) denote P(·,· | u_j, x_k)
@@ -27,8 +27,10 @@ using StatsBase
     end
 
     @testset "HPMM sampling" begin
-        hpmm = HPMM(P1, Pt, Pe)
-        @show hpmm
+        hpmm_gen = HpmmDistribution(P1, Pt, Pe)
+        @show rand(hpmm_gen, 10)
+
+        # @TODO: Get rid of tuples I think. [:,1] is quicker probably?
     end
 
 end
