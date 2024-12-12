@@ -4,7 +4,7 @@ using Distributions
 using Random
 using StatsBase
 
-include("hpmm.jl")
+include("./hpmm.jl")
 
 export HPMM
 
