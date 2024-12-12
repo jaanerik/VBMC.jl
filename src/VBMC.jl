@@ -6,7 +6,10 @@ using StatsBase
 
 println("=====")
 pwd() |> println
-readdir("../src/") |> println
+println("=====")
+readdir("./") |> println
+println("=====")
+readdir("../") |> println
 println("=====")
 include("HPMM.jl")
 
