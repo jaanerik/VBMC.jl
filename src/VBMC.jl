@@ -8,7 +8,7 @@ println("=====")
 pwd() |> println
 readdir("../src/") |> println
 println("=====")
-include("./hpmm.jl")
+include("HPMM.jl")
 
 export HPMM
 
