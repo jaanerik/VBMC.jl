@@ -3,9 +3,9 @@
 """
 
 struct HPMM
-    U<:Array{<:Int}
-    X<:Array{<:Int}
-    Y<:Array{<:Real}
+    U::Vector{<:Int}
+    X::Vector{<:Int}
+    Y::Vector{<:Real}
 end
 
 struct ReshapedCategorical <: Sampleable{Multivariate , Discrete } 
@@ -87,16 +87,16 @@ function Base.rand(
     P1::ReshapedCategorical,
     P_tr::TransitionDistribution,
     T::Int)
-    pmm = Array{Tuple{Int,Int},2}(undef, 10, 1)
+    pmm = Array{Array{Int},2}(undef, T, 1)
     pmm[1] = rand(P1)
     for t in 2:T
         uprev, xprev = pmm[t-1][1], pmm[t-1][2]
         pmm[t] = rand(P_tr, uprev, xprev)
     end
-    pmm
+    vcat((pmm .|> transpose)...)
 end
 
-function Base.rand(hpmm::HpmmDistribution, T::Int)
+function Base.rand(hpmm_gen::HpmmDistribution, T::Int)
     """
     Returns Matrix of size T of a Triplet Markov Chain,
     where first element in (U,X) tuple and Y is observed variable.
@@ -105,9 +105,9 @@ function Base.rand(hpmm::HpmmDistribution, T::Int)
         ....
     ]
     """
-    pmm = rand(hpmm.P_first, hpmm.P_tr, T)
-    ems = pmm .|> (p -> rand(Pe, p[1], p[2]))
-    hcat(pmm, ems)
+    pmm = rand(hpmm_gen.P_first, hpmm_gen.P_tr, T)
+    ems = eachrow(pmm) .|> (p -> rand(hpmm_gen.P_em, p[1], p[2]))
+    HPMM(pmm[:,1], pmm[:,2],ems)
 end
 
 # Helpers
@@ -116,10 +116,11 @@ function reshapeIndex(i::Int, U::Int, X::Int)
     i = i-1
     j = (i%U)+1
     k = div(i,U)+1
-    j,k
+    [j,k]
 end
 
-function reshapeIndex(t::Tuple{Int, Int}, U, X)
+function reshapeIndex(t::Array{Int}, U, X)
+    @assert size(t) == (2,)
     (t[2]-1)*U + t[1]
 end
 
@@ -127,8 +128,7 @@ function getWeights(rc::ReshapedCategorical)
     reshape(rc.d.p, (rc.U, rc.X))
 end
 
+@doc """
+Flattens an array using reduce
+"""
 function flatten(x::AbstractArray{<:Real}) reduce(vcat, x) end
-
-# function pdf(d::EmissionDistribution,u::Int,x::Int,y<:Real)
-#     pdf(d.Y_distr, )
-# end
