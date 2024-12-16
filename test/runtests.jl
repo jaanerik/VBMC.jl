@@ -45,7 +45,7 @@ include("test_utils.jl")
             (typeof(hpmm.U) <: AbstractArray{<:Int}) & 
             (typeof(hpmm.Y) <: AbstractArray{<:Real})
         end
-        @test hpmm.X |> size == (T,)
+        @test hpmm.X |> size == (T,1)
     end
 
 end
