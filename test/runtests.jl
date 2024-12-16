@@ -41,9 +41,9 @@ include("test_utils.jl")
         hpmm_gen = HpmmDistribution(P1, Pt, Pe)
         hpmm = rand(hpmm_gen, T)
         @test begin
-            (typeof(hpmm.X) <: Vector{<:Int}) & 
-            (typeof(hpmm.U) <: Vector{<:Int}) & 
-            (typeof(hpmm.Y) <: Vector{<:Real})
+            (typeof(hpmm.X) <: AbstractArray{<:Int}) & 
+            (typeof(hpmm.U) <: AbstractArray{<:Int}) & 
+            (typeof(hpmm.Y) <: AbstractArray{<:Real})
         end
         @test hpmm.X |> size == (T,)
     end
