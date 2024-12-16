@@ -4,16 +4,9 @@ using Distributions
 using Random
 using StatsBase
 
-abstract type AbstractTmmDistribution end
-
+include("utils.jl")
 include("TMM.jl")
 include("HPMM.jl")
-
-struct TmmStep
-    u::Int
-    x::Int
-    y::Real
-end
 
 @doc """
     Draw a HPMM chain sample of size T from
