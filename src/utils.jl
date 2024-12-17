@@ -3,7 +3,7 @@ abstract type AbstractTmmDistribution end
 struct TmmStep
     u::Int
     x::Int
-    y::Real
+    y::Number
 end
 
 struct ReshapedCategorical <: Sampleable{Multivariate,Discrete}
@@ -31,7 +31,25 @@ struct TransitionDistribution <: Sampleable{Multivariate,Discrete}
         end
 end
 
-# Overrides
+# Multiple dispatch
+
+@doc """
+    Draw a HPMM chain sample of size T from
+    a hidden homogeneous pairwise markov chain.
+    Returns HPMM
+"""
+function Base.rand(tmm_gen::AbstractTmmDistribution, T::Int)
+    U = Array{Int}(undef, T, 1)
+    X = Array{Int}(undef, T, 1)
+    Y = Array{Real}(undef, T, 1)
+    first = rand(tmm_gen)
+    U[1], X[1], Y[1] = first.u, first.x, first.y
+    for t = 2:T
+        next = rand(tmm_gen, U[t-1], X[t-1], Y[t-1])
+        U[t], X[t], Y[t] = next.u, next.x, next.y
+    end
+    HPMM(U, X, Y)
+end
 
 function Base.rand(rc::ReshapedCategorical)
     i = rand(rc.d)

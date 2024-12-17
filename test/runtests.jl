@@ -5,7 +5,7 @@ using VBMC
 # using VBMC:ReshapedCategorical,EmissionDistribution,HpmmDistribution,TransitionDistribution
 include("test_utils.jl")
 
-@testset "VBMC" begin
+@testset "TMM" begin
     Random.seed!(123)
     if "test" in readdir()
         cd("test")

@@ -1,10 +1,7 @@
-struct MarkovChain
-    P1:Categorical
-    Pt:InhomogeneousTransitionDistribution
-
-    MarkovChain(Z::Int, T::Int) =
-        new(Categorical(Z), InhomogeneousTransitionDistribution(ones(Z, Z, T) ./ Z))
-end
+"""
+    Markov Chain and forward-backward, Viterbi algorithm
+    implemented
+"""
 
 @doc """
 Let matrix element i,j,k denote
@@ -15,6 +12,14 @@ P_1 is meaningless and exists for notational comfort.
 """
 struct InhomogeneousTransitionDistribution
     mat::AbstractArray{Float64,3}
+end
+
+struct MarkovChain
+    P1::Categorical
+    Pt::InhomogeneousTransitionDistribution
+
+    MarkovChain(Z::Int, T::Int) =
+        new(Categorical(Z), InhomogeneousTransitionDistribution(ones(Z, Z, T) ./ Z))
 end
 
 struct Alpha
