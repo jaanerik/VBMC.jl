@@ -6,29 +6,28 @@ struct TmmStep
     y::Real
 end
 
-struct ReshapedCategorical <: Sampleable{Multivariate , Discrete } 
+struct ReshapedCategorical <: Sampleable{Multivariate,Discrete}
     d::Categorical
     U::Int
     X::Int
-    Y::Union{Int, Nothing}
+    Y::Union{Int,Nothing}
 
     ReshapedCategorical(d, U, X) = new(d, U, X, nothing)
     ReshapedCategorical(d, U, X, Y) = new(d, U, X, Y)
 end
 
-struct TransitionDistribution <: Sampleable{Multivariate , Discrete }
+struct TransitionDistribution <: Sampleable{Multivariate,Discrete}
     mat::AbstractArray{<:Real}
     U::Int
     X::Int
-    Y::Union{Int, Nothing}
+    Y::Union{Int,Nothing}
 
-    TransitionDistribution(
-        tmat::AbstractArray{<:Real}
-        ) = if ndims(tmat) == 4
-            new(tmat, size(tmat)[1],size(tmat)[2],nothing)
+    TransitionDistribution(tmat::AbstractArray{<:Real}) =
+        if ndims(tmat) == 4
+            new(tmat, size(tmat)[1], size(tmat)[2], nothing)
         else
             shape = size(tmat)
-            new(tmat, shape[1],shape[2],shape[3])
+            new(tmat, shape[1], shape[2], shape[3])
         end
 end
 
@@ -41,37 +40,37 @@ end
 
 function Base.rand(td::TransitionDistribution, prev::TmmStep)
     if isnothing(td.Y)
-        w = td.mat[:,:,prev.u,prev.x] |> flatten |> Weights
+        w = td.mat[:, :, prev.u, prev.x] |> flatten |> Weights
         s = sample(1:td.U*td.X, w)
         reshapeIndex(s, td.U, td.X)
     else
-        w = td.mat[:,:,:,prev.u,prev.x,prev.y] |> flatten |> Weights
+        w = td.mat[:, :, :, prev.u, prev.x, prev.y] |> flatten |> Weights
         s = sample(1:td.U*td.X*td.Y, w)
         reshapeIndex(s, td.U, td.X, td.Y)
     end
 end
 
 function reshapeIndex(i::Int, U::Int, X::Int)
-    i = i-1
-    j = (i%U)+1
-    k = div(i,U)+1
-    [j,k]
+    i = i - 1
+    j = (i % U) + 1
+    k = div(i, U) + 1
+    [j, k]
 end
 
 function reshapeIndex(i::Int, U::Int, X::Int, Y::Int)
-    i = i-1
-    l = div(i,U*X)+1 
-    i = i - (l-1) * U * X
-    j = (i%U)+1
-    k = div(i,U)+1
-    [j,k,l]
+    i = i - 1
+    l = div(i, U * X) + 1
+    i = i - (l - 1) * U * X
+    j = (i % U) + 1
+    k = div(i, U) + 1
+    [j, k, l]
 end
 
 function reshapeIndex(t::Array{Int}, U, X)
     if size(t) == (2,)
-        (t[2]-1)*U + t[1]
+        (t[2] - 1) * U + t[1]
     else
-        (t[3]-1) * U * X + (t[2]-1)*U + t[1]
+        (t[3] - 1) * U * X + (t[2] - 1) * U + t[1]
     end
 end
 
@@ -88,4 +87,6 @@ end
 @doc """
 Flattens an array using reduce
 """
-function flatten(x::AbstractArray{<:Real}) reduce(vcat, x) end
+function flatten(x::AbstractArray{<:Real})
+    reduce(vcat, x)
+end

@@ -5,8 +5,9 @@ using Random
 using StatsBase
 
 include("utils.jl")
-include("TMM.jl")
-include("HPMM.jl")
+include("tmm.jl")
+include("hpmm.jl")
+include("mc.jl")
 
 @doc """
     Draw a HPMM chain sample of size T from
@@ -20,15 +21,14 @@ function Base.rand(tmm_gen::AbstractTmmDistribution, T::Int)
     Y = Array{Real}(undef, T, 1)
     first = rand(tmm_gen)
     U[1], X[1], Y[1] = first.u, first.x, first.y
-    for t in 2:T
+    for t = 2:T
         next = rand(tmm_gen, U[t-1], X[t-1], Y[t-1])
         U[t], X[t], Y[t] = next.u, next.x, next.y
     end
-    HPMM(U,X,Y)
+    HPMM(U, X, Y)
 end
 
-export 
-    HpmmDistribution,
+export HpmmDistribution,
     TMM,
     TmmStep,
     TMM,
