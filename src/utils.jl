@@ -34,48 +34,50 @@ end
 # Multiple dispatch
 
 @doc """
-    Draw a HPMM chain sample of size T from
-    a hidden homogeneous pairwise markov chain.
-    Returns HPMM
+    rand(::AbstractTmmDistribution, ::Int)
+
+Draw a TMM chain sample of size T from
+a hidden homogeneous pairwise markov chain.
 """
-function Base.rand(tmm_gen::AbstractTmmDistribution, T::Int)
-    U = Array{Int}(undef, T, 1)
-    X = Array{Int}(undef, T, 1)
-    Y = Array{Real}(undef, T, 1)
+function Base.rand(tmm_gen::AbstractTmmDistribution, T::Int)::TMM
+    U = Array{Int}(undef, T, 1) |> vec
+    X = Array{Int}(undef, T, 1) |> vec
+    ytype = typeof(tmm_gen) == TmmDistribution ? Int : Real
+    Y = Array{ytype}(undef, T, 1) |> vec
     first = rand(tmm_gen)
     U[1], X[1], Y[1] = first.u, first.x, first.y
     for t = 2:T
-        next = rand(tmm_gen, U[t-1], X[t-1], Y[t-1])
+        next = rand(tmm_gen, TmmStep(U[t-1], X[t-1], Y[t-1]))
         U[t], X[t], Y[t] = next.u, next.x, next.y
     end
-    HPMM(U, X, Y)
+    TMM(U, X, Y)
 end
 
 function Base.rand(rc::ReshapedCategorical)
     i = rand(rc.d)
-    isnothing(rc.Y) ? reshapeIndex(i, rc.U, rc.X) : reshapeIndex(i, rc.U, rc.X, rc.Y)
+    isnothing(rc.Y) ? reshapeindex(i, rc.U, rc.X) : reshapeindex(i, rc.U, rc.X, rc.Y)
 end
 
 function Base.rand(td::TransitionDistribution, prev::TmmStep)
     if isnothing(td.Y)
         w = td.mat[:, :, prev.u, prev.x] |> flatten |> Weights
         s = sample(1:td.U*td.X, w)
-        reshapeIndex(s, td.U, td.X)
+        reshapeindex(s, td.U, td.X)
     else
         w = td.mat[:, :, :, prev.u, prev.x, prev.y] |> flatten |> Weights
         s = sample(1:td.U*td.X*td.Y, w)
-        reshapeIndex(s, td.U, td.X, td.Y)
+        reshapeindex(s, td.U, td.X, td.Y)
     end
 end
 
-function reshapeIndex(i::Int, U::Int, X::Int)
+function reshapeindex(i::Int, U::Int, X::Int)
     i = i - 1
     j = (i % U) + 1
     k = div(i, U) + 1
     [j, k]
 end
 
-function reshapeIndex(i::Int, U::Int, X::Int, Y::Int)
+function reshapeindex(i::Int, U::Int, X::Int, Y::Int)
     i = i - 1
     l = div(i, U * X) + 1
     i = i - (l - 1) * U * X
@@ -84,7 +86,7 @@ function reshapeIndex(i::Int, U::Int, X::Int, Y::Int)
     [j, k, l]
 end
 
-function reshapeIndex(t::Array{Int}, U, X)
+function reshapeindex(t::Array{Int}, U, X)
     if size(t) == (2,)
         (t[2] - 1) * U + t[1]
     else
@@ -94,7 +96,7 @@ end
 
 # Helpers
 
-function getWeights(rc::ReshapedCategorical)
+function getweights(rc::ReshapedCategorical)
     if isnothing(rc.Y)
         reshape(rc.d.p, (rc.U, rc.X))
     else

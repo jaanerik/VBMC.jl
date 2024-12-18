@@ -3,6 +3,8 @@ module VBMC
 using Distributions
 using Random
 using StatsBase
+using LogarithmicNumbers
+import Distributions: pdf
 
 include("utils.jl")
 include("tmm.jl")
@@ -12,12 +14,18 @@ include("mc.jl")
 export HpmmDistribution,
     TMM,
     TmmStep,
-    TMM,
     HPMM,
+    TmmDistribution,
     AbstractTmmDistribution,
     ReshapedCategorical,
     TransitionDistribution,
-    EmissionDistribution
+    EmissionDistribution,
+    Emission,
+    HpmmAnalyser,
+    Alpha,
+    Beta,
+    pdf,
+    getweights #
 
 VBMC
 end #module

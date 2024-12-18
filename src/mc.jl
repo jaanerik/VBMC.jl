@@ -22,11 +22,4 @@ struct MarkovChain
         new(Categorical(Z), InhomogeneousTransitionDistribution(ones(Z, Z, T) ./ Z))
 end
 
-struct Alpha
-    mat::AbstractArray{Float64,3}
-end
-struct Beta
-    mat::AbstractArray{Float64,3}
-end
-
 function forward_backward!(alpha::Alpha, beta::Beta, mc::MarkovChain) end
