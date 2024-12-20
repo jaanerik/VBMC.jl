@@ -7,8 +7,8 @@ using LogarithmicNumbers
 import Distributions: pdf
 
 include("utils.jl")
-include("tmm.jl")
-include("hpmm.jl")
+include("TMM.jl")
+include("HPMM.jl")
 include("mc.jl")
 
 export HpmmDistribution,
