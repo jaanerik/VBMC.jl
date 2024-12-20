@@ -17,8 +17,6 @@ vars = TOML.parsefile("Constants.toml")
 T, U, X, Y = vars["T"], vars["U"], vars["X"], vars["Y"]
 @test T == 10 && U == 3 && X == 2
 
-T = 2
-
 P1 = begin
     Vector(1:U*X) |>
     Dirichlet |>
@@ -79,11 +77,17 @@ end
     @test size(tmm.Y) == (T,)
 end
 
-dist = HpmmDistribution(P1, Pt, Pe)
-hpmm = rand(dist, T)
 @testset "Forward-backward" begin
-    @test true
-    analyser = HpmmAnalyser(hpmm, dist) #@btime 421.500 μs (6660 allocations: 212.00 KiB)
-    # TODO """pdf broken. Does not sum to one!"""
-    @test Iterators.product(1:U, 1:X) .|> (t -> pdf(analyser, t[1], t[2], 1)) |> sum |> float ≈ 1.0
+    dist = HpmmDistribution(P1, Pt, Pe)
+    hpmm = rand(dist, T)
+    analyser = HpmmAnalyser(hpmm, dist; isygiven = true) #@btime 423.041 μs (6579 allocations: 209.28 KiB)
+    u, x, t = sample(1:U), sample(1:X), sample(1:T)
+    @test Iterators.product(1:U, 1:X) .|>
+          (p -> pdf(analyser, t; u = p[1], x = p[2])) |>
+          sum |>
+          float ≈ 1.0
+
+    @test 1:U .|> (u -> pdf(analyser, t; u = u)) |> sum |> float ≈ 1.0
+
+    @test 1:X .|> (x -> pdf(analyser, t; x = x)) |> sum |> float ≈ 1.0
 end
