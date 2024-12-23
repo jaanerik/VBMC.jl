@@ -16,6 +16,7 @@ end
 vars = TOML.parsefile("Constants.toml")
 T, U, X, Y = vars["T"], vars["U"], vars["X"], vars["Y"]
 @test T == 10 && U == 3 && X == 2
+U, X, T = 2, 2, 2
 
 P1 = begin
     Vector(1:U*X) |>
@@ -80,7 +81,7 @@ end
 @testset "Forward-backward" begin
     dist = HpmmDistribution(P1, Pt, Pe)
     hpmm = rand(dist, T)
-    analyser = HpmmAnalyser(hpmm, dist; isygiven = true) #@btime 423.041 μs (6579 allocations: 209.28 KiB)
+    analyser = HpmmAnalyser(hpmm, dist) #@btime 423.041 μs (6579 allocations: 209.28 KiB)
     u, x, t = sample(1:U), sample(1:X), sample(1:T)
     @test Iterators.product(1:U, 1:X) .|>
           (p -> pdf(analyser, t; u = p[1], x = p[2])) |>
@@ -90,4 +91,16 @@ end
     @test 1:U .|> (u -> pdf(analyser, t; u = u)) |> sum |> float ≈ 1.0
 
     @test 1:X .|> (x -> pdf(analyser, t; x = x)) |> sum |> float ≈ 1.0
+
+    analyser2 = HpmmAnalyser(hpmm, dist, isygiven = false)
+
+    py =
+        Iterators.product(1:U, 1:X) .|>
+        (p -> pdf(analyser2, 1; u = p[1], x = p[2])) |>
+        sum |>
+        float
+
+    @test 1:U .|> (u -> pdf(analyser2, 1; u = u)) |> sum |> float ≈ py
+    @test 1:X .|> (x -> pdf(analyser2, 1; x = x)) |> sum |> float ≈ py
+    @test 1:X .|> (x -> pdf(analyser2, 2; x = x)) |> sum |> float ≈ py
 end

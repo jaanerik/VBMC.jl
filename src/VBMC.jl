@@ -25,7 +25,8 @@ export HpmmDistribution,
     Alpha,
     Beta,
     pdf,
-    getweights #
+    getweights, #
+    get_emmission_mat #
 
 VBMC
 end #module

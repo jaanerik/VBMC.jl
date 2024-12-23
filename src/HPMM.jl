@@ -44,6 +44,9 @@ end
 @doc """
 Creates a struct for marginal, element probabilities.
 Uses Alpha, Beta with LogarithmicNumbers for small values.
+
+kwarg isygiven true calculates P(⋅|y) and sums to 1, 
+false calculates P(⋅,y) and sums to P(y).
 """
 struct HpmmAnalyser
     hpmm::TMM
@@ -95,11 +98,10 @@ end
 function fillbeta!(beta::Beta, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
     @inbounds beta.mat[:, :, beta.T] .= 1
     @inbounds for t in 1:beta.T-1 |> reverse
+        emissionmat =
+            isygiven ? ones(beta.U, beta.X) : get_emmission_mat(hpmm.Y[t+1], dist.Pem)
         for (u, x) in Iterators.product(1:beta.U, 1:beta.X)
-            beta.mat[u, x, t] = beta.mat[:, :, t+1] .* dist.Pt.mat[:, :, u, x] |> sum
-        end
-        if !isygiven
-            beta.mat[:, :, t] .*= get_emmission_mat(hpmm.Y[t+1], dist.Pem)
+            beta.mat[u, x, t] = emissionmat .* beta.mat[:, :, t+1] .* dist.Pt.mat[:, :, u, x] |> sum
         end
     end
 end
@@ -142,11 +144,6 @@ function pdf(Pem::EmissionDistribution, emission::Real)
     Iterators.product(1:Pem.U, 1:Pem.X) |> pdf(Pem.distr, Pem.emission.rev(emission, u, x))
 end
 
-
-# function pdf(analyser::HpmmAnalyser, u::Int, x::Int, t::Int)
-#     analyser.alpha.mat[u, x, t] * analyser.beta.mat[u, x, t]
-# end
-
 function pdf(
     analyser::HpmmAnalyser,
     t::Int;
@@ -165,25 +162,3 @@ function pdf(
         analyser.alpha.mat[u, x, t] * analyser.beta.mat[u, x, t]
     end
 end
-
-#Iterators.product(1:U,1:X) |> collect |> flatten |> x -> reshape(x, U, X)
-
-"""
-@btime begin
-    Iterators.product(1:U,1:X) |> 
-    collect |> 
-    flatten .|> 
-    (t -> Pe.emission.rev(val, t[1], t[2])) |>
-    R -> pdf(Pe.distr, R) |>
-    P -> reshape(P, U, X)
-end #2.551 μs (47 allocations: 2.21 KiB)
-
-@btime begin
-    Iterators.product(1:U,1:X) |> 
-    collect |> 
-    flatten .|> 
-    (t -> revf(val, t[1], t[2])) |>
-    R -> pdf(Pe.distr, R) |>
-    P -> reshape(P, U, X)
-end #2.120 μs (35 allocations: 1.74 KiB)
-"""
