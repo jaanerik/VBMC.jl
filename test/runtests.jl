@@ -16,7 +16,6 @@ end
 vars = TOML.parsefile("Constants.toml")
 T, U, X, Y = vars["T"], vars["U"], vars["X"], vars["Y"]
 @test T == 10 && U == 3 && X == 2
-U, X, T = 2, 2, 2
 
 P1 = begin
     Vector(1:U*X) |>
