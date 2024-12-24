@@ -101,7 +101,8 @@ function fillbeta!(beta::Beta, hpmm::TMM, dist::HpmmDistribution; isygiven = fal
         emissionmat =
             isygiven ? ones(beta.U, beta.X) : get_emmission_mat(hpmm.Y[t+1], dist.Pem)
         for (u, x) in Iterators.product(1:beta.U, 1:beta.X)
-            beta.mat[u, x, t] = emissionmat .* beta.mat[:, :, t+1] .* dist.Pt.mat[:, :, u, x] |> sum
+            beta.mat[u, x, t] =
+                emissionmat .* beta.mat[:, :, t+1] .* dist.Pt.mat[:, :, u, x] |> sum
         end
     end
 end
@@ -160,5 +161,18 @@ function pdf(
         sum
     else
         analyser.alpha.mat[u, x, t] * analyser.beta.mat[u, x, t]
+    end
+end
+
+#Note assumption that U, X are given in temporal order. X[1] is at t=1
+function pdf(
+    analyser;
+    U::Union{Nothing,AbstractArray{Int}} = nothing,
+    X::Union{Nothing,AbstractArray{Int}} = nothing,
+)
+    if isnothing(U)
+        enumerate(X) .|> (((t, x),) -> pdf(analyser, t; x = x)) |> prod
+    else
+        enumerate(U) .|> (((t, u),) -> pdf(analyser, t; u = u)) |> prod
     end
 end

@@ -25,7 +25,7 @@ P1 = begin
     (d -> ReshapedCategorical(d, U, X))
 end
 
-#P(·,· | u_i, x_j) sums to 1 for fixed i, j
+#P(·,· | u_prev, x_prev) = Pt[:,:,u_prev,x_prev] sums to 1 for fixed u_prev, x_prev
 Pt = reshape(rand(Dirichlet(1:U*X), U * X), (U, X, U, X)) |> TransitionDistribution
 
 function emissionf(randVal, u, x)
@@ -88,18 +88,18 @@ end
           float ≈ 1.0
 
     @test 1:U .|> (u -> pdf(analyser, t; u = u)) |> sum |> float ≈ 1.0
-
     @test 1:X .|> (x -> pdf(analyser, t; x = x)) |> sum |> float ≈ 1.0
+    @test pdf(analyser; X = hpmm.X) > 0
 
-    analyser2 = HpmmAnalyser(hpmm, dist, isygiven = false)
+    analyser = HpmmAnalyser(hpmm, dist, isygiven = false)
 
     py =
         Iterators.product(1:U, 1:X) .|>
-        (p -> pdf(analyser2, 1; u = p[1], x = p[2])) |>
+        (p -> pdf(analyser, 1; u = p[1], x = p[2])) |>
         sum |>
         float
 
-    @test 1:U .|> (u -> pdf(analyser2, 1; u = u)) |> sum |> float ≈ py
-    @test 1:X .|> (x -> pdf(analyser2, 1; x = x)) |> sum |> float ≈ py
-    @test 1:X .|> (x -> pdf(analyser2, 2; x = x)) |> sum |> float ≈ py
+    @test 1:U .|> (u -> pdf(analyser, 1; u = u)) |> sum |> float ≈ py
+    @test 1:X .|> (x -> pdf(analyser, 1; x = x)) |> sum |> float ≈ py
+    @test 1:X .|> (x -> pdf(analyser, 2; x = x)) |> sum |> float ≈ py
 end
