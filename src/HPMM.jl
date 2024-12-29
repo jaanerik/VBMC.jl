@@ -56,10 +56,12 @@ struct HpmmAnalyser
     beta::Beta
     U::Int
     X::Int
+    isygiven::Bool
     HpmmAnalyser(hpmm, dist; isygiven = true) = begin
         U = dist.Pt.U
         X = dist.Pt.X
         T = size(hpmm.U)[1]
+        isygiven = isygiven
         alpha, beta = Alpha(ones(U, X, T)), Beta(ones(U, X, T))
         fillalpha!(alpha, hpmm, dist; isygiven = isygiven)
         fillbeta!(beta, hpmm, dist; isygiven = isygiven)
@@ -152,20 +154,11 @@ function pdf(
     uprev::Union{Nothing,Int} = nothing,
     x::Union{Nothing,Int} = nothing,
     xprev::Union{Nothing,Int} = nothing,
-    isygiven = false,
 )
     if isnothing(uprev) & isnothing(xprev)
         _pdfqt(analyser, t; u = u, x = x)
     else
-        _pdfqtqprev(
-            analyser,
-            t;
-            u = u,
-            x = x,
-            uprev = uprev,
-            xprev = xprev,
-            isygiven = isygiven,
-        )
+        _pdfqtqprev(analyser, t; u = u, x = x, uprev = uprev, xprev = xprev)
     end
 end
 
@@ -195,38 +188,36 @@ function _pdfqtqprev(
     uprev::Union{Nothing,Int} = nothing,
     x::Union{Nothing,Int} = nothing,
     xprev::Union{Nothing,Int} = nothing,
-    isygiven = false,
 )
     pe = 1.0
-    if isygiven
-        y = analyser.hpmm.Y[t]
-        pe *= Pem.emission.rev(y, u, x) |> (r -> pdf(analyser.dist.Pem.distr, r))
-    end
+    y = analyser.hpmm.Y[t]
     if isnothing(x)
         Iterators.product(1:analyser.X, 1:analyser.X) .|>
         (
             ((x, xprev),) ->
-                analyser.alpha.mat[uprev, xprev, t-1] *
-                analyser.dist.Pt.mat[u, x, uprev, xprev] *
-                pe *
-                analyser.beta.mat[u, x, t]
+                _pdfqtqprev(analyser, t; u = u, uprev = uprev, x = x, xprev = xprev)
         ) |>
         sum
     elseif isnothing(u)
         Iterators.product(1:analyser.U, 1:analyser.U) .|>
         (
             ((u, uprev),) ->
-                analyser.alpha.mat[uprev, xprev, t-1] *
-                analyser.dist.Pt.mat[u, x, uprev, xprev] *
-                pe *
-                analyser.beta.mat[u, x, t]
+                _pdfqtqprev(analyser, t; u = u, uprev = uprev, x = x, xprev = xprev)
         ) |>
         sum
     else
         analyser.alpha.mat[uprev, xprev, t-1] *
         analyser.dist.Pt.mat[u, x, uprev, xprev] *
-        pe *
+        _emmissionorone(analyser, y, u, x) *
         analyser.beta.mat[u, x, t]
+    end
+end
+
+function _emmissionorone(analyser, y, u, x)
+    if !analyser.isygiven
+        pdf(analyser.dist.Pem.distr, analyser.dist.Pem.emission.rev(y, u, x))
+    else
+        1
     end
 end
 
