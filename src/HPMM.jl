@@ -149,6 +149,30 @@ function pdf(
     analyser::HpmmAnalyser,
     t::Int;
     u::Union{Nothing,Int} = nothing,
+    uprev::Union{Nothing,Int} = nothing,
+    x::Union{Nothing,Int} = nothing,
+    xprev::Union{Nothing,Int} = nothing,
+    isygiven = false,
+)
+    if isnothing(uprev) & isnothing(xprev)
+        _pdfqt(analyser, t; u = u, x = x)
+    else
+        _pdfqtqprev(
+            analyser,
+            t;
+            u = u,
+            x = x,
+            uprev = uprev,
+            xprev = xprev,
+            isygiven = isygiven,
+        )
+    end
+end
+
+function _pdfqt(
+    analyser::HpmmAnalyser,
+    t::Int;
+    u::Union{Nothing,Int} = nothing,
     x::Union{Nothing,Int} = nothing,
 )
     if isnothing(x)
@@ -164,15 +188,59 @@ function pdf(
     end
 end
 
+function _pdfqtqprev(
+    analyser::HpmmAnalyser,
+    t::Int;
+    u::Union{Nothing,Int} = nothing,
+    uprev::Union{Nothing,Int} = nothing,
+    x::Union{Nothing,Int} = nothing,
+    xprev::Union{Nothing,Int} = nothing,
+    isygiven = false,
+)
+    pe = 1.0
+    if isygiven
+        y = analyser.hpmm.Y[t]
+        pe *= Pem.emission.rev(y, u, x) |> (r -> pdf(analyser.dist.Pem.distr, r))
+    end
+    if isnothing(x)
+        Iterators.product(1:analyser.X, 1:analyser.X) .|>
+        (
+            ((x, xprev),) ->
+                analyser.alpha.mat[uprev, xprev, t-1] *
+                analyser.dist.Pt.mat[u, x, uprev, xprev] *
+                pe *
+                analyser.beta.mat[u, x, t]
+        ) |>
+        sum
+    elseif isnothing(u)
+        Iterators.product(1:analyser.U, 1:analyser.U) .|>
+        (
+            ((u, uprev),) ->
+                analyser.alpha.mat[uprev, xprev, t-1] *
+                analyser.dist.Pt.mat[u, x, uprev, xprev] *
+                pe *
+                analyser.beta.mat[u, x, t]
+        ) |>
+        sum
+    else
+        analyser.alpha.mat[uprev, xprev, t-1] *
+        analyser.dist.Pt.mat[u, x, uprev, xprev] *
+        pe *
+        analyser.beta.mat[u, x, t]
+    end
+end
+
 #Note assumption that U, X are given in temporal order. X[1] is at t=1
 function pdf(
     analyser;
-    U::Union{Nothing,AbstractArray{Int}} = nothing,
-    X::Union{Nothing,AbstractArray{Int}} = nothing,
+    U::Union{Nothing,AbstractArray{<:Int}} = nothing,
+    X::Union{Nothing,AbstractArray{<:Int}} = nothing,
 )
     if isnothing(U)
         enumerate(X) .|> (((t, x),) -> pdf(analyser, t; x = x)) |> prod
-    else
+    elseif isnothing(X)
         enumerate(U) .|> (((t, u),) -> pdf(analyser, t; u = u)) |> prod
+    else
+        enumerate(zip(U, X)) .|> (((t, (u, x)),) -> pdf(analyser, t; u = u, x = x)) |> prod
     end
 end

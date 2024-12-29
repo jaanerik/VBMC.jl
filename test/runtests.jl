@@ -90,6 +90,16 @@ end
     @test 1:U .|> (u -> pdf(analyser, t; u = u)) |> sum |> float ≈ 1.0
     @test 1:X .|> (x -> pdf(analyser, t; x = x)) |> sum |> float ≈ 1.0
     @test pdf(analyser; X = hpmm.X) > 0
+    @test pdf(analyser; U = hpmm.U) > 0
+    @test pdf(analyser; U = hpmm.U, X = hpmm.X) > 0
+    @test Iterators.product(1:X, 1:X) .|>
+          (((x, xprev),) -> pdf(analyser, 2; x = x, xprev = xprev)) |>
+          sum |>
+          float ≈
+          Iterators.product(1:U, 1:U) .|>
+          (((u, uprev),) -> pdf(analyser, 2; u = u, uprev = uprev)) |>
+          sum |>
+          float
 
     analyser = HpmmAnalyser(hpmm, dist, isygiven = false)
 
@@ -102,4 +112,12 @@ end
     @test 1:U .|> (u -> pdf(analyser, 1; u = u)) |> sum |> float ≈ py
     @test 1:X .|> (x -> pdf(analyser, 1; x = x)) |> sum |> float ≈ py
     @test 1:X .|> (x -> pdf(analyser, 2; x = x)) |> sum |> float ≈ py
+    @test Iterators.product(1:X, 1:X) .|>
+          (((x, xprev),) -> pdf(analyser, 2; x = x, xprev = xprev)) |>
+          sum |>
+          float ≈
+          Iterators.product(1:U, 1:U) .|>
+          (((u, uprev),) -> pdf(analyser, 2; u = u, uprev = uprev)) |>
+          sum |>
+          float
 end
