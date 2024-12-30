@@ -10,6 +10,7 @@ include("utils.jl")
 include("TMM.jl")
 include("HPMM.jl")
 include("mc.jl")
+include("vb.jl")
 
 export HpmmDistribution,
     TMM,
@@ -22,11 +23,10 @@ export HpmmDistribution,
     EmissionDistribution,
     Emission,
     HpmmAnalyser,
-    Alpha,
-    Beta,
-    pdf,
-    getweights, #
-    get_emmission_mat #
+    AlphaBeta,#
+    MarkovChain,
+    VB,
+    pdf
 
 VBMC
 end #module

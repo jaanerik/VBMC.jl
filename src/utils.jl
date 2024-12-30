@@ -31,6 +31,21 @@ struct TransitionDistribution <: Sampleable{Multivariate,Discrete}
         end
 end
 
+struct AlphaBeta
+    mat::AbstractArray{ULogarithmic}
+    U::Int
+    X::Int
+    T::Int
+    AlphaBeta(mat::AbstractArray{<:Real,3}) = begin
+        U, X, T = size(mat)
+        new(mat .|> ULogarithmic, U, X, T)
+    end
+    AlphaBeta(mat::AbstractArray{<:Real,2}) = begin
+        X, T = size(mat)
+        new(mat .|> ULogarithmic, X, T)
+    end
+end
+
 # Multiple dispatch
 
 @doc """

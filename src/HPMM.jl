@@ -20,27 +20,6 @@ struct HpmmDistribution <: AbstractTmmDistribution
     Pem::EmissionDistribution
 end
 
-struct Alpha
-    mat::AbstractArray{ULogarithmic,3}
-    U::Int
-    X::Int
-    T::Int
-    Alpha(mat::AbstractArray{<:Real,3}) = begin
-        U, X, T = size(mat)
-        new(mat .|> ULogarithmic, U, X, T)
-    end
-end
-struct Beta
-    mat::AbstractArray{ULogarithmic,3}
-    U::Int
-    X::Int
-    T::Int
-    Beta(mat::AbstractArray{<:Real,3}) = begin
-        U, X, T = size(mat)
-        new(mat .|> ULogarithmic, U, X, T)
-    end
-end
-
 @doc """
 Creates a struct for marginal, element probabilities.
 Uses Alpha, Beta with LogarithmicNumbers for small values.
@@ -52,8 +31,8 @@ struct HpmmAnalyser
     hpmm::TMM
     dist::HpmmDistribution
 
-    alpha::Alpha
-    beta::Beta
+    alpha::AlphaBeta
+    beta::AlphaBeta
     U::Int
     X::Int
     isygiven::Bool
@@ -62,16 +41,16 @@ struct HpmmAnalyser
         X = dist.Pt.X
         T = size(hpmm.U)[1]
         isygiven = isygiven
-        alpha, beta = Alpha(ones(U, X, T)), Beta(ones(U, X, T))
+        alpha, beta = AlphaBeta(ones(U, X, T)), AlphaBeta(ones(U, X, T))
         fillalpha!(alpha, hpmm, dist; isygiven = isygiven)
         fillbeta!(beta, hpmm, dist; isygiven = isygiven)
         new(hpmm, dist, alpha, beta, U, X)
     end
 end
 
-function flatten(x::AbstractArray{Tuple{Int,Int}})
-    reduce(vcat, x)
-end
+# function flatten(x::AbstractArray{Tuple{Int,Int}})
+#     reduce(vcat, x)
+# end
 function get_emmission_mat(y::Real, Pem::EmissionDistribution)
     begin
         Iterators.product(1:Pem.U, 1:Pem.X) |>
@@ -83,7 +62,7 @@ function get_emmission_mat(y::Real, Pem::EmissionDistribution)
     end
 end
 
-function fillalpha!(alpha::Alpha, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
+function fillalpha!(alpha::AlphaBeta, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
     @inbounds alpha.mat[:, :, 1] = dist.P1 |> getweights
     if !isygiven
         @inbounds alpha.mat[:, :, 1] .*= get_emmission_mat(hpmm.Y[1], dist.Pem)
@@ -97,7 +76,7 @@ function fillalpha!(alpha::Alpha, hpmm::TMM, dist::HpmmDistribution; isygiven = 
         end
     end
 end
-function fillbeta!(beta::Beta, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
+function fillbeta!(beta::AlphaBeta, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
     @inbounds beta.mat[:, :, beta.T] .= 1
     @inbounds for t in 1:beta.T-1 |> reverse
         emissionmat =
