@@ -163,5 +163,5 @@ function normalise(X::AbstractArray{<:Real})
 end
 
 function normaliseDims1(X::AbstractArray{<:Real})
-    X ./ sum(X, dims=1)
+    X ./ sum(X, dims = 1)
 end

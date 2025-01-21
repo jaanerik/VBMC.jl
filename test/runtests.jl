@@ -128,12 +128,12 @@ end
     mcu = MarkovChain(U, T)
     mcx = MarkovChain(X, T)
 
-    function norm(A :: AbstractArray; p = 2)
-        sum(abs(A).^p)^(1/p)
+    function norm(A::AbstractArray; p = 2)
+        sum(abs(A) .^ p)^(1 / p)
     end
 
-    val = 1.
-    for _ in 1:200
+    val = 1.0
+    for _ = 1:200
         tmpP1, tmpPt = mcx.P1 |> deepcopy, mcx.Pt |> deepcopy
         fillalphaX!(mcx, mcu, P1, Pt, Pe, hpmm.Y)
         fillbetaX!(mcx, mcu, Pt, Pe, hpmm.Y)

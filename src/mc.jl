@@ -177,7 +177,7 @@ function fillbetaX!(
     Pe::EmissionDistribution,
     Y::AbstractArray{<:Real},
 )
-    @inbounds mcx.beta.mat[:, mcx.alpha.T] .= 1/mcx.Z
+    @inbounds mcx.beta.mat[:, mcx.alpha.T] .= 1 / mcx.Z
 
     @inbounds for t in 1:mcx.beta.T-1 |> reverse
         @inbounds mcx.beta[:, t] =
@@ -221,13 +221,15 @@ function fillPtx!(
     mcx.P1[:] = mcx.alpha[:, 1] .* mcx.beta[:, 1] |> normalise
     for t = 2:mcx.alpha.T
         @inbounds mcx.Pt[:, :, t] =
-            Iterators.product(1:mcx.Z, 1:mcx.Z) .|> (
+            Iterators.product(1:mcx.Z, 1:mcx.Z) .|>
+            (
                 ((x, xprev),) ->
                     mcx.alpha[xprev, t-1] *
                     ptx(x, xprev, mcu.Z, Y[t], Pt, Pe, mcu.Pt[:, :, t]) *
                     (t < 10 ? mcx.beta[x, t+1] : 1.0)
-            ) |> normaliseDims1
-        
+            ) |>
+            normaliseDims1
+
     end
 end
 function fillPtu!(
@@ -240,12 +242,14 @@ function fillPtu!(
     mcu.P1[:] = mcu.alpha[:, 1] .* mcu.beta[:, 1] |> normalise
     for t = 2:mcx.alpha.T
         @inbounds mcu.Pt[:, :, t] =
-            Iterators.product(1:mcu.Z, 1:mcu.Z) .|> (
+            Iterators.product(1:mcu.Z, 1:mcu.Z) .|>
+            (
                 ((u, uprev),) ->
                     mcu.alpha[uprev, t-1] *
                     ptu(u, uprev, mcx.Z, Y[t], Pt, Pe, mcx.Pt[:, :, t]) *
                     (t < 10 ? mcu.beta[u, t+1] : 1.0)
-            ) |> normaliseDims1
+            ) |>
+            normaliseDims1
     end
 end
 
@@ -308,18 +312,16 @@ end
 @doc """
 Returns MAP path.
 """
-function viterbi(
-    mc::MarkovChain
-)
+function viterbi(mc::MarkovChain)
     Z, T = mc.alpha.mat |> size
     paths = ones(Z, T) .|> Int
     paths[:, 1] = 1:Z
     weights = ones(Z, T) .|> ULogarithmic
     weights[:, 1] = mc.P1
     tmp = ones(Z)
-    for t in 2:T
-        for z in 1:Z
-            tmp .= mc.Pt[z,:,t] .* weights[:, t-1]
+    for t = 2:T
+        for z = 1:Z
+            tmp .= mc.Pt[z, :, t] .* weights[:, t-1]
             source, weight = argmax(tmp), maximum(tmp)
             weights[z, t] = weight
             paths[z, t] = source
