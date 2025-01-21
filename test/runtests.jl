@@ -121,3 +121,34 @@ end
           sum |>
           float
 end
+
+@testset "Variational Bayes iteration converges" begin
+    dist = HpmmDistribution(P1, Pt, Pe)
+    hpmm = rand(dist, T)
+    mcu = MarkovChain(U, T)
+    mcx = MarkovChain(X, T)
+
+    function norm(A :: AbstractArray; p = 2)
+        sum(abs(A).^p)^(1/p)
+    end
+
+    val = 1.
+    for _ in 1:200
+        tmpP1, tmpPt = mcx.P1 |> deepcopy, mcx.Pt |> deepcopy
+        fillalphaX!(mcx, mcu, P1, Pt, Pe, hpmm.Y)
+        fillbetaX!(mcx, mcu, Pt, Pe, hpmm.Y)
+        VBMC.fillPtx!(mcx, mcu, Pt, Pe, hpmm.Y)
+
+        fillalphaU!(mcu, mcx, P1, Pt, Pe, hpmm.Y)
+        fillbetaU!(mcu, mcx, Pt, Pe, hpmm.Y)
+        VBMC.fillPtu!(mcu, mcx, Pt, Pe, hpmm.Y)
+
+        signeda = mcx.Pt .|> Logarithmic
+        signedb = tmpPt .|> Logarithmic
+        val = norm(signeda .- signedb)
+        if val < 1.0e-20
+            break
+        end
+    end
+    @test val < 1.0e-14
+end

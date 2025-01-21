@@ -48,10 +48,10 @@ struct HpmmAnalyser
     end
 end
 
-# function flatten(x::AbstractArray{Tuple{Int,Int}})
-#     reduce(vcat, x)
-# end
-function get_emmission_mat(y::Real, Pem::EmissionDistribution)
+function flatten(x::AbstractArray{Tuple{Int,Int}})
+    reduce(vcat, x)
+end
+function get_emission_mat(y::Real, Pem::EmissionDistribution)
     begin
         Iterators.product(1:Pem.U, 1:Pem.X) |>
         collect |>
@@ -65,14 +65,14 @@ end
 function fillalpha!(alpha::AlphaBeta, hpmm::TMM, dist::HpmmDistribution; isygiven = false)
     @inbounds alpha.mat[:, :, 1] = dist.P1 |> getweights
     if !isygiven
-        @inbounds alpha.mat[:, :, 1] .*= get_emmission_mat(hpmm.Y[1], dist.Pem)
+        @inbounds alpha.mat[:, :, 1] .*= get_emission_mat(hpmm.Y[1], dist.Pem)
     end
     @inbounds for t = 2:alpha.T
         for (u, x) in Iterators.product(1:alpha.U, 1:alpha.X)
             alpha.mat[u, x, t] = alpha.mat[:, :, t-1] .* dist.Pt.mat[u, x, :, :] |> sum
         end
         if !isygiven
-            alpha.mat[:, :, t] .*= get_emmission_mat(hpmm.Y[t], dist.Pem)
+            alpha.mat[:, :, t] .*= get_emission_mat(hpmm.Y[t], dist.Pem)
         end
     end
 end
@@ -80,7 +80,7 @@ function fillbeta!(beta::AlphaBeta, hpmm::TMM, dist::HpmmDistribution; isygiven 
     @inbounds beta.mat[:, :, beta.T] .= 1
     @inbounds for t in 1:beta.T-1 |> reverse
         emissionmat =
-            isygiven ? ones(beta.U, beta.X) : get_emmission_mat(hpmm.Y[t+1], dist.Pem)
+            isygiven ? ones(beta.U, beta.X) : get_emission_mat(hpmm.Y[t+1], dist.Pem)
         for (u, x) in Iterators.product(1:beta.U, 1:beta.X)
             beta.mat[u, x, t] =
                 emissionmat .* beta.mat[:, :, t+1] .* dist.Pt.mat[:, :, u, x] |> sum
@@ -89,6 +89,15 @@ function fillbeta!(beta::AlphaBeta, hpmm::TMM, dist::HpmmDistribution; isygiven 
 end
 
 # Multiple dispatch
+
+function Base.getindex(
+    Pe::EmissionDistribution,
+    u::Union{Int64,Colon},
+    x::Union{Int64,Colon},
+    y::Real,
+)
+    pdf(Pe.distr, Pe.emission.rev(y, u, x))
+end
 
 function Base.rand(ed::EmissionDistribution, u::Int, x::Int)
     randVal = ed.distr |> rand
@@ -122,9 +131,9 @@ function pdf(Pem::EmissionDistribution, emission::Real, u::Int, x::Int)
     pdf(Pem.distr, Pem.emission.rev(emission, u, x))
 end
 
-function pdf(Pem::EmissionDistribution, emission::Real)
-    Iterators.product(1:Pem.U, 1:Pem.X) |> pdf(Pem.distr, Pem.emission.rev(emission, u, x))
-end
+# function pdf(Pem::EmissionDistribution, emission::Real)
+#     Iterators.product(1:Pem.U, 1:Pem.X) |> pdf(Pem.distr, Pem.emission.rev(emission, u, x))
+# end
 
 function pdf(
     analyser::HpmmAnalyser,
@@ -187,12 +196,12 @@ function _pdfqtqprev(
     else
         analyser.alpha.mat[uprev, xprev, t-1] *
         analyser.dist.Pt.mat[u, x, uprev, xprev] *
-        _emmissionorone(analyser, y, u, x) *
+        _emissionorone(analyser, y, u, x) *
         analyser.beta.mat[u, x, t]
     end
 end
 
-function _emmissionorone(analyser, y, u, x)
+function _emissionorone(analyser, y, u, x)
     if !analyser.isygiven
         pdf(analyser.dist.Pem.distr, analyser.dist.Pem.emission.rev(y, u, x))
     else

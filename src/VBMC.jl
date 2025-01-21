@@ -26,7 +26,14 @@ export HpmmDistribution,
     AlphaBeta,#
     MarkovChain,
     VB,
-    pdf
+    pdf,
+    fillalphaX!,#
+    fillbetaX!,#
+    fillalphaU!,
+    fillbetaU!,
+    getindex#,
+    viterbi,
+fillPtu!, fillPtx!, ptx, lnbtx, lnr1u, lnrtx, normalise
 
 VBMC
 end #module
