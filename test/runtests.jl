@@ -129,7 +129,7 @@ end
     mcx = MarkovChain(X, T)
 
     function norm(A::AbstractArray; p = 2)
-        sum(abs(A) .^ p)^(1 / p)
+        sum(abs.(A) .^ p)^(1 / p)
     end
 
     val = 1.0
@@ -146,7 +146,7 @@ end
         signeda = mcx.Pt .|> Logarithmic
         signedb = tmpPt .|> Logarithmic
         val = norm(signeda .- signedb)
-        if val < 1.0e-20
+        if val < 1.0e-14
             break
         end
     end
