@@ -32,7 +32,18 @@ export HpmmDistribution,
     fillalphaU!,
     fillbetaU!,
     getindex#,
-viterbi, fillPtu!, fillPtx!, ptx, lnbtx, lnr1u, lnrtx, normalise
+    reshapeindex,#
+    viterbi,
+    fillPtu!,
+    fillPtx!,
+    ptx,
+    lnbtx,
+    lnr1u,
+    lnrtx,
+    normalise,
+    norm,
+    qxxprev,
+    quuprev
 
 VBMC
 end #module

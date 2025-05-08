@@ -28,8 +28,12 @@ struct MarkovChain
         ones(Z) ./ Z,
         ones(Z, Z, T) ./ Z,
         Z,
-        AlphaBeta(ones(Z, T)),
-        AlphaBeta(ones(Z, T)),
+        AlphaBeta(ones(Z, T) ./ Z),
+        begin 
+            beta = AlphaBeta(ones(Z, T) ./ Z)
+            beta[:, T] .= 1
+            beta
+        end,
     )
 end
 
@@ -69,7 +73,7 @@ function lnbtx(
     U::Int,
     Q1::AbstractArray{<:ULogarithmic},
 )
-    1:U .|> (u -> Pe[u, x, y] * Q1[u]) |> sum
+    1:U .|> (u -> log(Pe[u, x, y]) * Q1[u]) |> sum
 end
 function lnbtu(
     y::Real,
@@ -78,7 +82,7 @@ function lnbtu(
     X::Int,
     Q1::AbstractArray{<:ULogarithmic},
 )
-    1:X .|> (x -> Pe[u, x, y] * Q1[x]) |> sum
+    1:X .|> (x -> log(Pe[u, x, y]) * Q1[x]) |> sum
 end
 
 function p1x(
@@ -109,9 +113,10 @@ function ptx(
     y::Real,
     Pt::TransitionDistribution,
     Pe::EmissionDistribution,
-    Qt::AbstractArray{ULogarithmic,2},
+    Qt2::AbstractArray{ULogarithmic,2},
+    Qt::AbstractArray{<:ULogarithmic},
 )
-    @inline exp(lnrtx(x, xprev, U, Pt, Qt)) * exp(lnbtx(y, Pe, x, U, Qt))
+    @inline exp(lnrtx(x, xprev, U, Pt, Qt2)) * exp(lnbtx(y, Pe, x, U, Qt))
 end
 function ptu(
     u::Int,
@@ -120,9 +125,10 @@ function ptu(
     y::Real,
     Pt::TransitionDistribution,
     Pe::EmissionDistribution,
-    Qt::AbstractArray{ULogarithmic,2},
+    Qt2::AbstractArray{ULogarithmic,2},
+    Qt::AbstractArray{<:ULogarithmic},
 )
-    @inline exp(lnrtu(u, uprev, X, Pt, Qt)) * exp(lnbtu(y, Pe, u, X, Qt))
+    @inline exp(lnrtu(u, uprev, X, Pt, Qt2)) * exp(lnbtu(y, Pe, u, X, Qt))
 end
 
 function fillalphaX!(
@@ -141,7 +147,7 @@ function fillalphaX!(
             Iterators.product(1:mcx.Z, 1:mcx.Z) .|>
             (
                 ((x, xprev),) ->
-                    ptx(x, xprev, mcu.Z, Y[t], Pt, Pe, mcu.Pt[:, :, t]) *
+                    ptx(x, xprev, mcu.Z, Y[t], Pt, Pe, mcu.Pt[:, :, t],mcu.alpha[:,t].*mcu.beta[:,t]) *
                     mcx.alpha[xprev, t-1]
             ) |>
             Q -> sum(Q, dims = 2) #|> normalise
@@ -163,7 +169,7 @@ function fillalphaU!(
             Iterators.product(1:mcu.Z, 1:mcu.Z) .|>
             (
                 ((u, uprev),) ->
-                    ptu(u, uprev, mcx.Z, Y[t], Pt, Pe, mcx.Pt[:, :, t]) *
+                    ptu(u, uprev, mcx.Z, Y[t], Pt, Pe, mcx.Pt[:, :, t],mcx.alpha[:,t].*mcx.beta[:,t]) *
                     mcu.alpha[uprev, t-1]
             ) |>
             Q -> sum(Q, dims = 2) #|> normalise
@@ -177,14 +183,14 @@ function fillbetaX!(
     Pe::EmissionDistribution,
     Y::AbstractArray{<:Real},
 )
-    @inbounds mcx.beta.mat[:, mcx.alpha.T] .= 1 / mcx.Z
+    @inbounds mcx.beta.mat[:, mcx.alpha.T] .= 1
 
     @inbounds for t in 1:mcx.beta.T-1 |> reverse
         @inbounds mcx.beta[:, t] =
             Iterators.product(1:mcx.Z, 1:mcx.Z) .|>
             (
                 ((x, xnext),) ->
-                    ptx(xnext, x, mcu.Z, Y[t+1], Pt, Pe, mcu.Pt[:, :, t+1]) *
+                    ptx(xnext, x, mcu.Z, Y[t+1], Pt, Pe, mcu.Pt[:, :, t+1],mcu.alpha[:,t].*mcu.beta[:,t]) *
                     mcx.beta[xnext, t+1]
             ) |>
             Q -> sum(Q, dims = 2) #|> normalise
@@ -200,11 +206,11 @@ function fillbetaU!(
     @inbounds mcu.beta[:, mcu.alpha.T] .= 1
 
     @inbounds for t in 1:mcu.beta.T-1 |> reverse
-        @inbounds mcu.alpha[:, t] =
+        @inbounds mcu.beta[:, t] =
             Iterators.product(1:mcu.Z, 1:mcu.Z) .|>
             (
                 ((u, unext),) ->
-                    ptu(unext, u, mcx.Z, Y[t+1], Pt, Pe, mcx.Pt[:, :, t+1]) *
+                    ptu(unext, u, mcx.Z, Y[t+1], Pt, Pe, mcx.Pt[:, :, t+1],mcx.alpha[:,t].*mcx.beta[:,t]) *
                     mcu.beta[unext, t+1]
             ) |>
             Q -> sum(Q, dims = 2) #|> normalise
@@ -218,17 +224,16 @@ function fillPtx!(
     Pe::EmissionDistribution,
     Y::AbstractArray{<:Real},
 )
-    mcx.P1[:] = mcx.alpha[:, 1] .* mcx.beta[:, 1] |> normalise
+    mcx.alpha.mat .= mcx.alpha.mat ./ VBMC.norm(mcx) #Let us normalise the markov chain first
+    mcx.P1[:] = mcx.alpha[:, 1] .* mcx.beta[:, 1] #|> normalise #./ sum(mcx.P1[:]) #
     for t = 2:mcx.alpha.T
         @inbounds mcx.Pt[:, :, t] =
-            Iterators.product(1:mcx.Z, 1:mcx.Z) .|>
-            (
+            Iterators.product(1:mcx.Z, 1:mcx.Z) .|> (
                 ((x, xprev),) ->
                     mcx.alpha[xprev, t-1] *
-                    ptx(x, xprev, mcu.Z, Y[t], Pt, Pe, mcu.Pt[:, :, t]) *
-                    (t < 10 ? mcx.beta[x, t+1] : 1.0)
-            ) |>
-            normaliseDims1
+                    ptx(x, xprev, mcu.Z, Y[t], Pt, Pe, mcu.Pt[:, :, t],mcu.alpha[:,t].*mcu.beta[:,t]) *
+                    mcx.beta[x, t]#(t < mcx.alpha.T ? mcx.beta[x, t+1] : 1.0)
+            ) #|> normaliseDims1
 
     end
 end
@@ -239,17 +244,17 @@ function fillPtu!(
     Pe::EmissionDistribution,
     Y::AbstractArray{<:Real},
 )
-    mcu.P1[:] = mcu.alpha[:, 1] .* mcu.beta[:, 1] |> normalise
+    mcu.alpha.mat .= mcu.alpha.mat ./ VBMC.norm(mcu) #Let us normalise the markov chain first
+    mcu.P1[:] = mcu.alpha[:, 1] .* mcu.beta[:, 1] # |> normalise
     for t = 2:mcx.alpha.T
         @inbounds mcu.Pt[:, :, t] =
             Iterators.product(1:mcu.Z, 1:mcu.Z) .|>
             (
                 ((u, uprev),) ->
                     mcu.alpha[uprev, t-1] *
-                    ptu(u, uprev, mcx.Z, Y[t], Pt, Pe, mcx.Pt[:, :, t]) *
-                    (t < 10 ? mcu.beta[u, t+1] : 1.0)
-            ) |>
-            normaliseDims1
+                    ptu(u, uprev, mcx.Z, Y[t], Pt, Pe, mcx.Pt[:, :, t],mcx.alpha[:,t].*mcx.beta[:,t]) *
+                    mcu.beta[u, t]#(t < mcu.alpha.T ? mcu.beta[u, t+1] : 1.0)
+            ) # |> A -> normaliseDimsTo(A, 1/norm(mcx))
     end
 end
 
@@ -269,7 +274,7 @@ function pdfu(
     Pt::TransitionDistribution,
     Pe::EmissionDistribution,
 )
-    Σ = ptu(u, uprev, mcx.Z, y, Pt, Pe, mcx.Pt[:, :, t])
+    Σ = ptu(u, uprev, mcx.Z, y, Pt, Pe, mcx.Pt[:, :, t],mcx.alpha[:,t].*mcx.beta[:,t])
     @inbounds mcu.alpha[uprev, t-1] * mcu.beta[u, t] * Σ
 end
 function pdfx(
@@ -282,7 +287,7 @@ function pdfx(
     Pt::TransitionDistribution,
     Pe::EmissionDistribution,
 )
-    Σ = ptx(x, xprev, mcu.Z, y, Pt, Pe, mcu.Pt[:, :, t])
+    Σ = ptx(x, xprev, mcu.Z, y, Pt, Pe, mcu.Pt[:, :, t],mcu.alpha[:,t].*mcu.beta[:,t])
     @inbounds mcx.alpha[uprev, t-1] * mcx.beta[u, t] * Σ
 end
 
@@ -309,6 +314,29 @@ function pdfx(
     (((x, xprev),) -> pdfx(mcx, x, xprev, t, y, mcu, Pt, Pe))
 end
 
+function qxxprev(
+    x::Int,
+    xprev::Int,
+    mcu::MarkovChain,
+    t::Int,
+    y::Real,
+    Pt::TransitionDistribution,
+    Pe::EmissionDistribution,
+)
+    ptx(x, xprev, mcu.Z, y, Pt, Pe, mcu.Pt[:, :, t],mcu.alpha[:,t].*mcu.beta[:,t])
+end
+function quuprev(
+    u::Int,
+    uprev::Int,
+    mcx::MarkovChain,
+    t::Int,
+    y::Real,
+    Pt::TransitionDistribution,
+    Pe::EmissionDistribution,
+)
+    ptu(u, uprev, mcx.Z, y, Pt, Pe, mcx.Pt[:, :, t],mcx.alpha[:,t].*mcx.beta[:,t])
+end
+
 @doc """
 Returns MAP path.
 """
@@ -333,4 +361,8 @@ function viterbi(mc::MarkovChain)
         tmp[t-1] = paths[tmp[t], t]
     end
     tmp
+end
+
+function norm(mc::MarkovChain)
+    mc.alpha[:,1] .* mc.beta[:, 1] |> sum
 end
