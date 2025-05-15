@@ -58,7 +58,7 @@ end
 
 @testset "TMM sampling" begin
     P1 = begin
-        Vector(1:U*X*Y) |>
+        ones(U*X*Y) |>
         Dirichlet |>
         rand |>
         (x -> Categorical(x)) |>
@@ -67,7 +67,7 @@ end
 
     #P(·,·,· | u_i, x_j, y_k) sums to 1 for fixed i, j, k
     Pt = begin
-        rand(Dirichlet(1:U*X*Y), U * X * Y) |>
+        rand(Dirichlet(ones(U*X*Y)), U * X * Y) |>
         W -> reshape(W, (U, X, Y, U, X, Y)) |> TransitionDistribution
     end
     @test Pt.mat[:, :, :, 1, 1, 1] |> sum ≈ 1.0
